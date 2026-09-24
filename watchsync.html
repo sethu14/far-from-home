@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Far from Home</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg: #0e0c0a;
+    --bg-raised: #17130f;
+    --line: #2c261e;
+    --amber: #e0a458;
+    --amber-dim: #8a6a3a;
+    --ink: #ece5d8;
+    --ink-dim: #a89e8c;
+    --red: #c1543f;
+    --green: #7a9b6e;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse at 20% -10%, rgba(224,164,88,0.06), transparent 55%),
+      radial-gradient(ellipse at 90% 110%, rgba(224,164,88,0.04), transparent 50%);
+    color: var(--ink);
+    font-family: var(--serif);
+    min-height:100%;
+    display:flex;
+    flex-direction:column;
+  }
+  .wrap{
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+    width:100%;
+    flex:1;
+    display:flex;
+    flex-direction:column;
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+    margin-bottom: 36px;
+  }
+  .brand .sprocket{
+    width:14px; height:14px;
+    border:2px solid var(--amber);
+    border-radius:3px;
+    display:inline-block;
+    position:relative;
+    flex:none;
+  }
+  .brand h1{
+    font-size:22px;
+    letter-spacing:0.02em;
+    margin:0;
+    font-weight:400;
+    color:var(--ink);
+  }
+  .brand h1 em{ color:var(--amber); font-style:normal; }
+  .brand .tag{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--ink-dim);
+    margin-left:auto;
+    letter-spacing:0.03em;
+  }
+
+  /* ---- Panels (setup / lobby) ---- */
+  .panel{
+    background: var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:32px;
+    margin-bottom:20px;
+  }
+  .panel h2{
+    font-size:17px;
+    font-weight:400;
+    margin:0 0 6px;
+    color:var(--ink);
+  }
+  .panel p.lead{
+    color:var(--ink-dim);
+    font-size:14px;
+    margin:0 0 22px;
+    line-height:1.5;
+    max-width:56ch;
+  }
+  label{
+    display:block;
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--ink-dim);
+    letter-spacing:0.04em;
+    margin-bottom:6px;
+  }
+  input[type=text], input[type=password]{
+    width:100%;
+    background:#0b0906;
+    border:1px solid var(--line);
+    color:var(--ink);
+    font-family:var(--mono);
+    font-size:14px;
+    padding:11px 12px;
+    border-radius:4px;
+    outline:none;
+  }
+  input[type=text]:focus, input[type=password]:focus{
+    border-color:var(--amber-dim);
+  }
+  .field{ margin-bottom:16px; }
+  .row{ display:flex; gap:14px; flex-wrap:wrap; }
+  .row > .field{ flex:1; min-width:180px; }
+
+  button{
+    font-family:var(--serif);
+    font-size:14px;
+    background:transparent;
+    color:var(--amber);
+    border:1px solid var(--amber-dim);
+    padding:10px 20px;
+    border-radius:4px;
+    cursor:pointer;
+    transition: background .15s, color .15s;
+  }
+  button:hover{ background: rgba(224,164,88,0.1); }
+  button.primary{
+    background:var(--amber);
+    color:#1a1409;
+    border-color:var(--amber);
+    font-weight:600;
+  }
+  button.primary:hover{ background:#eab369; }
+  button.ghost{
+    border-color:var(--line);
+    color:var(--ink-dim);
+  }
+  button:disabled{ opacity:0.4; cursor:default; }
+  .btn-row{ display:flex; gap:10px; margin-top:22px; flex-wrap:wrap; }
+
+  .divider{
+    display:flex; align-items:center; gap:14px;
+    color:var(--ink-dim); font-family:var(--mono); font-size:11px;
+    margin: 26px 0;
+  }
+  .divider::before, .divider::after{
+    content:''; flex:1; height:1px; background:var(--line);
+  }
+
+  .hint{ font-size:12px; color:var(--ink-dim); margin-top:8px; line-height:1.5; }
+  .hint a{ color:var(--amber); }
+  .error{ color:var(--red); font-size:13px; margin-top:10px; font-family:var(--mono); }
+
+  /* ---- Theater screen ---- */
+  .theater{ display:none; flex:1; flex-direction:column; }
+  .theater.active{ display:flex; }
+  .status-bar{
+    display:flex; align-items:center; gap:16px;
+    padding:12px 16px;
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius:6px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+  }
+  .code-chip{
+    font-family:var(--mono);
+    letter-spacing:0.12em;
+    background:#0b0906;
+    border:1px solid var(--amber-dim);
+    color:var(--amber);
+    padding:5px 12px;
+    border-radius:4px;
+    font-size:13px;
+  }
+  .members{
+    display:flex; align-items:center; gap:8px;
+    font-family:var(--mono); font-size:12px; color:var(--ink-dim);
+  }
+  .dot{ width:7px; height:7px; border-radius:50%; background:var(--green); flex:none; }
+  .dot.off{ background:var(--red); }
+  .spacer{ flex:1; }
+  .link-badge{
+    font-family:var(--mono); font-size:11px;
+    color:var(--ink-dim);
+    border:1px dashed var(--line);
+    padding:4px 8px;
+    border-radius:4px;
+  }
+  .link-badge.you{ color:var(--amber); border-color:var(--amber-dim); }
+
+  video{
+    width:100%;
+    background:#000;
+    border-radius:6px;
+    display:block;
+    max-height:70vh;
+  }
+  .filebar{
+    display:flex; align-items:center; gap:12px;
+    margin-top:14px;
+    flex-wrap:wrap;
+  }
+  .filebar .fname{
+    font-family:var(--mono); font-size:12px; color:var(--ink-dim);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:320px;
+  }
+  input[type=file]{ display:none; }
+  .filepick{
+    font-family:var(--mono); font-size:12px;
+    border:1px solid var(--line);
+    padding:8px 14px; border-radius:4px;
+    color:var(--ink-dim); cursor:pointer;
+  }
+  .filepick:hover{ border-color:var(--amber-dim); color:var(--amber); }
+
+  .log{
+    margin-top:16px;
+    font-family:var(--mono); font-size:11px;
+    color:var(--ink-dim);
+    background:#0b0906;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:10px 14px;
+    height:110px;
+    overflow-y:auto;
+    line-height:1.7;
+  }
+  .log .who{ color:var(--amber); }
+  .log .self{ color:var(--ink-dim); opacity:0.6; }
+
+  footer{
+    text-align:center;
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--ink-dim);
+    opacity:0.6;
+    padding:20px;
+  }
+
+  @media (max-width:560px){
+    .panel{ padding:22px; }
+    video{ max-height:44vh; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <span class="sprocket"></span>
+    <h1>Far from Home</h1>
+    <span class="tag" id="connTag">not connected</span>
+  </div>
+
+  <!-- STEP 1: Supabase setup -->
+  <div class="panel" id="setupPanel">
+    <h2>One-time setup</h2>
+    <p class="lead">This app relays play / pause / seek events through a free Supabase project — nobody's video file ever leaves their computer. Paste in your project's URL and publishable key once; they're saved in this browser only.</p>
+    <div class="row">
+      <div class="field">
+        <label for="sbUrl">SUPABASE PROJECT URL</label>
+        <input type="text" id="sbUrl" placeholder="https://xxxxxxxx.supabase.co">
+      </div>
+      <div class="field">
+        <label for="sbKey">SUPABASE PUBLISHABLE KEY</label>
+        <input type="password" id="sbKey" placeholder="sb_publishable_...">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="primary" id="saveCreds">Save &amp; continue</button>
+    </div>
+    <p class="hint">Don't have a project yet? Create one free at <a href="https://supabase.com" target="_blank" rel="noopener">supabase.com</a> — Project Settings → API Keys gives you both values (use the <strong>Publishable key</strong>, not the secret key). No credit card, no server to deploy.</p>
+    <div class="error" id="setupError" style="display:none;"></div>
+  </div>
+
+  <!-- STEP 2: room lobby -->
+  <div class="panel" id="lobbyPanel" style="display:none;">
+    <h2>Start or join a room</h2>
+    <p class="lead">Everyone loads their own copy of the movie. One person creates a room and shares the code; everyone else joins with it.</p>
+    <div class="field">
+      <label for="displayName">YOUR NAME</label>
+      <input type="text" id="displayName" placeholder="e.g. Priya" maxlength="24">
+    </div>
+    <div class="row">
+      <div class="field">
+        <button class="primary" id="createRoomBtn" style="width:100%;">Create a new room</button>
+      </div>
+      <div class="field" style="display:flex; gap:10px;">
+        <input type="text" id="joinCode" placeholder="ROOM CODE" maxlength="5" style="text-transform:uppercase;">
+        <button id="joinRoomBtn">Join</button>
+      </div>
+    </div>
+    <div class="error" id="lobbyError" style="display:none;"></div>
+    <button class="ghost" id="changeCreds" style="margin-top:8px; display:none;">change Supabase credentials</button>
+  </div>
+
+  <!-- STEP 3: theater -->
+  <div class="theater" id="theater">
+    <div class="status-bar">
+      <span class="code-chip" id="roomCodeChip">-----</span>
+      <span class="members"><span class="dot" id="connDot"></span><span id="memberCount">1 watching</span></span>
+      <span class="spacer"></span>
+      <span class="link-badge you" id="roleBadge">member</span>
+      <button class="ghost" id="leaveBtn">leave room</button>
+    </div>
+
+    <video id="player" controls></video>
+
+    <div class="filebar">
+      <label class="filepick" for="fileInput">choose movie file&hellip;</label>
+      <input type="file" id="fileInput" accept="video/*">
+      <span class="fname" id="fileName">no file loaded yet — pick the same file everyone else has</span>
+    </div>
+
+    <div class="log" id="eventLog"></div>
+  </div>
+
+  <footer>runs entirely in your browsers · video never uploaded · sync via Supabase Realtime</footer>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const setupPanel = $('setupPanel'), lobbyPanel = $('lobbyPanel'), theater = $('theater');
+  const connTag = $('connTag');
+
+  // These two tokens are replaced at deploy time by the GitHub Actions workflow,
+  // which pulls the real values from your repo's Secrets. If you open this file
+  // directly (without going through that workflow) they stay as placeholders and
+  // the app falls back to asking for credentials manually.
+  const INJECTED_URL = "__SUPABASE_URL__";
+  const INJECTED_KEY = "__SUPABASE_KEY__";
+  function injectedCredsValid(){
+    return INJECTED_URL && INJECTED_KEY &&
+      INJECTED_URL.indexOf('__SUPABASE_URL__') === -1 &&
+      INJECTED_KEY.indexOf('__SUPABASE_KEY__') === -1;
+  }
+
+  const clientId = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random())+Date.now());
+  let supabase, channel, isHost = false, roomCode = '', myName = '';
+  const DRIFT_TOLERANCE = 0.75;   // seconds before we force-correct
+  const SELF_GUARD_MS = 300;      // ignore self-originated dom events after applying a remote change
+  const HEARTBEAT_MS = 5000;
+
+  const video = $('player');
+  let applyingRemote = false;
+  let lastLocalActionAt = 0;
+
+  function log(msg, who, self){
+    const el = $('eventLog');
+    const line = document.createElement('div');
+    line.innerHTML = (who ? `<span class="${self?'who self':'who'}">${who}</span> ` : '') + msg;
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+    while (el.childNodes.length > 60) el.removeChild(el.firstChild);
+  }
+
+  /* ---------- credentials ---------- */
+  function loadCreds(){
+    try{
+      const url = localStorage.getItem('rs_sb_url');
+      const key = localStorage.getItem('rs_sb_key');
+      if(url && key) return {url, key};
+    }catch(e){}
+    return null;
+  }
+  function showLobby(){
+    setupPanel.style.display = 'none';
+    lobbyPanel.style.display = 'block';
+    if(!injectedCredsValid()) $('changeCreds').style.display = 'inline-block';
+    try{ myName = localStorage.getItem('rs_name') || ''; }catch(e){}
+    if(myName) $('displayName').value = myName;
+  }
+
+  if(injectedCredsValid()){
+    // Deployed via the GitHub Actions workflow — credentials are already baked in,
+    // so skip the setup screen entirely.
+    try{
+      supabase = window.supabase.createClient(INJECTED_URL, INJECTED_KEY);
+      connTag.textContent = 'supabase ready';
+      showLobby();
+    }catch(e){
+      $('setupError').textContent = 'Pre-configured credentials failed: ' + e.message;
+      $('setupError').style.display = 'block';
+    }
+  } else {
+    const existing = loadCreds();
+    if(existing){
+      try{
+        supabase = window.supabase.createClient(existing.url, existing.key);
+        connTag.textContent = 'supabase ready';
+        showLobby();
+      }catch(e){
+        // fall through to setup
+      }
+    }
+  }
+
+  $('saveCreds').onclick = () => {
+    const url = $('sbUrl').value.trim();
+    const key = $('sbKey').value.trim();
+    const err = $('setupError');
+    err.style.display = 'none';
+    if(!url || !key || !/^https:\/\/.+supabase\.co/.test(url)){
+      err.textContent = 'Enter a valid Supabase project URL and publishable key.';
+      err.style.display = 'block';
+      return;
+    }
+    try{
+      supabase = window.supabase.createClient(url, key);
+      localStorage.setItem('rs_sb_url', url);
+      localStorage.setItem('rs_sb_key', key);
+      connTag.textContent = 'supabase ready';
+      showLobby();
+    }catch(e){
+      err.textContent = 'Could not create client: ' + e.message;
+      err.style.display = 'block';
+    }
+  };
+
+  $('changeCreds').onclick = () => {
+    lobbyPanel.style.display = 'none';
+    setupPanel.style.display = 'block';
+  };
+
+  /* ---------- room create/join ---------- */
+  function randomCode(len=5){
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
+    let out = '';
+    for(let i=0;i<len;i++) out += chars[Math.floor(Math.random()*chars.length)];
+    return out;
+  }
+
+  function captureName(){
+    myName = ($('displayName').value.trim() || 'Guest').slice(0,24);
+    try{ localStorage.setItem('rs_name', myName); }catch(e){}
+  }
+
+  $('createRoomBtn').onclick = () => {
+    captureName();
+    enterRoom(randomCode(), true);
+  };
+  $('joinRoomBtn').onclick = () => {
+    captureName();
+    const code = $('joinCode').value.trim().toUpperCase();
+    if(code.length < 4){
+      const err = $('lobbyError');
+      err.textContent = 'Enter the room code your friend shared.';
+      err.style.display = 'block';
+      return;
+    }
+    enterRoom(code, false);
+  };
+
+  function enterRoom(code, asHost){
+    roomCode = code;
+    isHost = asHost;
+    lobbyPanel.style.display = 'none';
+    theater.classList.add('active');
+    $('roomCodeChip').textContent = roomCode;
+    $('roleBadge').textContent = isHost ? 'host (' + myName + ')' : myName;
+
+    channel = supabase.channel('room-' + roomCode, {
+      config: { broadcast: { self: false }, presence: { key: clientId } }
+    });
+
+    channel.on('broadcast', { event: 'sync' }, (msg) => handleRemote(msg.payload));
+
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState();
+      const count = Object.keys(state).length;
+      $('memberCount').textContent = count + (count===1 ? ' watching' : ' watching');
+    });
+
+    channel.subscribe(async (status) => {
+      const dot = $('connDot');
+      if(status === 'SUBSCRIBED'){
+        dot.classList.remove('off');
+        connTag.textContent = 'connected';
+        await channel.track({ name: myName, host: isHost });
+        log('joined the room.', myName, true);
+        if(isHost) startHeartbeat();
+      } else if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED'){
+        dot.classList.add('off');
+        connTag.textContent = 'disconnected';
+      }
+    });
+  }
+
+  $('leaveBtn').onclick = () => {
+    if(channel) supabase.removeChannel(channel);
+    stopHeartbeat();
+    theater.classList.remove('active');
+    lobbyPanel.style.display = 'block';
+    $('eventLog').innerHTML = '';
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+    $('fileName').textContent = 'no file loaded yet — pick the same file everyone else has';
+  };
+
+  /* ---------- local file ---------- */
+  $('fileInput').addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    if(!f) return;
+    const url = URL.createObjectURL(f);
+    video.src = url;
+    $('fileName').textContent = f.name;
+    log('loaded a local file: ' + f.name, myName, true);
+  });
+
+  /* ---------- sending ---------- */
+  function send(payload){
+    if(!channel) return;
+    lastLocalActionAt = Date.now();
+    channel.send({
+      type: 'broadcast',
+      event: 'sync',
+      payload: Object.assign({ sender: clientId, senderName: myName }, payload)
+    });
+  }
+
+  function guardedFire(fn){
+    applyingRemote = true;
+    fn();
+    setTimeout(() => { applyingRemote = false; }, SELF_GUARD_MS);
+  }
+
+  video.addEventListener('play', () => {
+    if(applyingRemote) return;
+    send({ type: 'play', time: video.currentTime });
+  });
+  video.addEventListener('pause', () => {
+    if(applyingRemote) return;
+    send({ type: 'pause', time: video.currentTime });
+  });
+  video.addEventListener('seeked', () => {
+    if(applyingRemote) return;
+    send({ type: 'seek', time: video.currentTime });
+  });
+  video.addEventListener('ratechange', () => {
+    if(applyingRemote) return;
+    send({ type: 'rate', value: video.playbackRate });
+  });
+
+  /* ---------- receiving ---------- */
+  function handleRemote(msg){
+    if(!msg || msg.sender === clientId) return;
+    switch(msg.type){
+      case 'play':
+        guardedFire(() => {
+          if(Math.abs(video.currentTime - msg.time) > DRIFT_TOLERANCE) video.currentTime = msg.time;
+          video.play().catch(()=>{});
+        });
+        log('pressed play', msg.senderName);
+        break;
+      case 'pause':
+        guardedFire(() => {
+          video.currentTime = msg.time;
+          video.pause();
+        });
+        log('paused', msg.senderName);
+        break;
+      case 'seek':
+        guardedFire(() => { video.currentTime = msg.time; });
+        log('jumped to ' + fmt(msg.time), msg.senderName);
+        break;
+      case 'rate':
+        guardedFire(() => { video.playbackRate = msg.value; });
+        log('set speed to ' + msg.value + '×', msg.senderName);
+        break;
+      case 'heartbeat':
+        if(!isHost){
+          const diff = video.currentTime - msg.time;
+          if(Math.abs(diff) > DRIFT_TOLERANCE){
+            guardedFire(() => { video.currentTime = msg.time; });
+          }
+          if(msg.paused && !video.paused){ guardedFire(() => video.pause()); }
+          if(!msg.paused && video.paused){ guardedFire(() => video.play().catch(()=>{})); }
+          if(video.playbackRate !== msg.rate){ guardedFire(() => { video.playbackRate = msg.rate; }); }
+        }
+        break;
+    }
+  }
+
+  function fmt(t){
+    t = Math.max(0, Math.floor(t));
+    const m = Math.floor(t/60), s = t%60;
+    return m + ':' + String(s).padStart(2,'0');
+  }
+
+  /* ---------- host heartbeat (drift correction) ---------- */
+  let hbTimer = null;
+  function startHeartbeat(){
+    stopHeartbeat();
+    hbTimer = setInterval(() => {
+      if(!video.src) return;
+      send({ type: 'heartbeat', time: video.currentTime, paused: video.paused, rate: video.playbackRate });
+    }, HEARTBEAT_MS);
+  }
+  function stopHeartbeat(){
+    if(hbTimer){ clearInterval(hbTimer); hbTimer = null; }
+  }
+
+  window.addEventListener('beforeunload', () => {
+    if(channel) supabase.removeChannel(channel);
+  });
+})();
+</script>
+</body>
+</html>
