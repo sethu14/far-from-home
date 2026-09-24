@@ -337,8 +337,8 @@
   // which pulls the real values from your repo's Secrets. If you open this file
   // directly (without going through that workflow) they stay as placeholders and
   // the app falls back to asking for credentials manually.
-  const INJECTED_URL = "__SUPABASE_URL__";
-  const INJECTED_KEY = "__SUPABASE_KEY__";
+  const INJECTED_URL = "https://cgspbsjrpnhozegrjzzq.supabase.co";
+  const INJECTED_KEY = "sb_publishable_cK7rmNl0sy5kqCaTbTqxeA_cE-2fdIr";
   function injectedCredsValid(){
     return INJECTED_URL && INJECTED_KEY &&
       INJECTED_URL.indexOf('__SUPABASE_URL__') === -1 &&
