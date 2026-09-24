@@ -1,4 +1,4 @@
-name: Deploy Reel Sync to GitHub Pages
+name: Deploy far-from-home to GitHub Pages
 
 on:
   push:
